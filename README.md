@@ -29,7 +29,25 @@ Validate the environment:
 uv pip check
 ```
 
-## 2. Run Stage 1: shard GitHub events
+## 2. Download raw GitHub Archive events
+
+Stage 1 expects gzipped GitHub Archive event files under an input directory. GH Archive provides one `.json.gz` file per UTC hour, for example:
+
+```bash
+mkdir -p /path/to/raw-events/2024
+wget -P /path/to/raw-events/2024 https://data.gharchive.org/2024-01-01-0.json.gz
+```
+
+To download a full UTC day:
+
+```bash
+mkdir -p /path/to/raw-events/2024
+wget -P /path/to/raw-events/2024 https://data.gharchive.org/2024-01-01-{0..23}.json.gz
+```
+
+Use the raw-events directory as `--in-root` in Stage 1.
+
+## 3. Run Stage 1: shard GitHub events
 
 Stage 1 reads gzipped GitHub Archive JSON/JSONL files, keeps pull-request-relevant events, normalizes them, and writes bucketed Parquet files.
 
@@ -39,7 +57,7 @@ sbatch launch-stage1.sh \
   --out-root /path/to/stage1-output
 ```
 
-## 3. Run Stage 2: group PR events
+## 4. Run Stage 2: group PR events
 
 Stage 2 reads the Stage 1 bucketed output, groups events by repository and pull request, filters merged PRs, and writes grouped PR-level Parquet files.
 
@@ -49,7 +67,7 @@ sbatch launch-stage2.sh \
   --out-dir /path/to/stage2-output
 ```
 
-## 4. Run Stage 3: enrich with code
+## 5. Run Stage 3: enrich with code
 
 Stage 3 reads the Stage 2 grouped PRs, clones/fetches GitHub repositories, extracts diffs, commits, touched files, and base-version file contents, then writes enriched Parquet files.
 
@@ -60,7 +78,7 @@ sbatch launch-stage3.sh \
   --clone-root /path/to/clones
 ```
 
-## 5. Monitor logs
+## 6. Monitor logs
 
 Each Slurm job writes logs under a directory named by the job ID:
 
@@ -92,7 +110,7 @@ tail -f <job_id>/driver.err
 Run the stages in order:
 
 ```text
-Stage 1 -> Stage 2 -> Stage 3
+Download raw events -> Stage 1 -> Stage 2 -> Stage 3
 ```
 
-The launch scripts now take input and output paths as command-line arguments. Keep the Stage 1 output path consistent with Stage 2 input, and the Stage 2 output path consistent with Stage 3 input.
+The launch scripts take input and output paths as command-line arguments. Keep the Stage 1 output path consistent with Stage 2 input, and the Stage 2 output path consistent with Stage 3 input.
